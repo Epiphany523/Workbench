@@ -314,6 +314,7 @@ export default {
         video: "Video Studio",
         prompts: "Prompt Library",
         assets: "My Assets",
+        voice: "Voice Studio",  // v0.7.1 added (borrowed from SHUO-Canvas)
         config: "Settings",
     },
     topNav: {

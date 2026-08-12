@@ -38,15 +38,17 @@ export function AppTopNav() {
                 <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
                     <div className="mx-auto flex h-full max-w-7xl items-stretch justify-between gap-5 px-6">
                         <div className="flex min-w-0 items-center">
-                            <Link to="/" className="flex h-full shrink-0 items-center gap-2 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:text-stone-600 dark:text-stone-100 dark:hover:text-stone-300">
-                                <span
-                                    className="size-5 shrink-0 bg-current"
-                                    style={{
-                                        mask: "url(/logo.svg) center / contain no-repeat",
-                                        WebkitMask: "url(/logo.svg) center / contain no-repeat",
-                                    }}
-                                />
+                            <Link
+                                to="/"
+                                className="flex h-full shrink-0 items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold leading-none tracking-tight transition hover:bg-stone-100 dark:hover:bg-stone-800/50"
+                                style={{ color: "var(--lumen-wine, #8B2845)" }}
+                            >
+                                <span aria-hidden="true" className="text-lg">🎬</span>
                                 <span className="text-base font-medium">{t("meta.title")}</span>
+                                <span
+                                    className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                                    style={{ background: "var(--lumen-gold, #c4a55a)", color: "#fff" }}
+                                >Lumen</span>
                             </Link>
 
                             <button

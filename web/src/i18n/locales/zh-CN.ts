@@ -314,6 +314,7 @@ export default {
         video: "视频创作台",
         prompts: "提示词库",
         assets: "我的资产",
+        voice: "语音工作室",  // v0.7.1 新增（借鑑 SHUO-Canvas）
         config: "配置",
     },
     topNav: {

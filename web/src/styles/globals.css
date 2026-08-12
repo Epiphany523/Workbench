@@ -50,6 +50,14 @@
 
 :root {
     --radius: 0.625rem;
+    /* Lumen Canvas 品牌色（借鑑 v0.6 + 酒紅金銅） */
+    --lumen-wine: #8B2845;
+    --lumen-wine-soft: #a64d6a;
+    --lumen-wine-glow: rgba(139, 40, 69, 0.4);
+    --lumen-gold: #c4a55a;
+    --lumen-gold-soft: #d4af6a;
+    --lumen-cream: #faf7f2;
+
     --border: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
     --background: oklch(1 0 0);

@@ -12,6 +12,8 @@ import NotFound from "@/pages/not-found";
 import PromptsPage from "@/pages/prompts";
 import VideoPage from "@/pages/video";
 
+import VoicePage from "@/pages/voice";
+
 export const router = createBrowserRouter([
     {
         element: (
@@ -26,6 +28,7 @@ export const router = createBrowserRouter([
             { path: "/video", element: <VideoPage /> },
             { path: "/assets", element: <AssetsPage /> },
             { path: "/prompts", element: <PromptsPage /> },
+            { path: "/voice", element: <VoicePage /> },  // v0.7.1 新增
             { path: "/canvas", element: <CanvasPage /> },
             { path: "/canvas/:id", element: <CanvasProjectPage /> },
             { path: "/config", element: <ConfigPage /> },

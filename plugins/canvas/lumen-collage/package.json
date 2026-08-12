@@ -1,0 +1,17 @@
+{
+    "name": "canvas-plugin-lumen-collage",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Lumen Canvas 宮格節點（借鑑 SHUO-Canvas v0.7.5）",
+    "scripts": {
+        "build": "node build.mjs",
+        "dev": "node build.mjs --watch",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@infinite-canvas/plugin-sdk": "file:../sdk",
+        "@types/react": "19.1.12",
+        "typescript": "^5"
+    }
+}

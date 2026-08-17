@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [新增] 新增 Windows 桌面客户端（Electron 壳），可打包生成 NSIS 安装包。
 + [新增] 提示词来源新增 Freestylefly GPT Image 2 内置来源。
 
 ## v0.15.1 - 2026-08-07

@@ -1,5 +1,4 @@
-import { Bot, Menu } from "lucide-react";
-import { Button, Tooltip } from "antd";
+import { Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -20,8 +19,6 @@ export function AppTopNav() {
     const agentEnabled = useAgentStore((state) => state.enabled);
     const agentConnected = useAgentStore((state) => state.connected);
     const connectAgent = useAgentStore((state) => state.connectAgent);
-    const togglePanel = useAgentStore((state) => state.togglePanel);
-    const panelOpen = useAgentStore((state) => state.panelOpen);
     const hideHeader = /^\/canvas\/[^/]+/.test(pathname);
     const slug = pathname.split("/").filter(Boolean)[0];
     const activeToolSlug = navigationTools.some((tool) => tool.slug === slug) ? (slug as NavigationToolSlug) : undefined;
@@ -43,12 +40,7 @@ export function AppTopNav() {
                                 className="flex h-full shrink-0 items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold leading-none tracking-tight transition hover:bg-stone-100 dark:hover:bg-stone-800/50"
                                 style={{ color: "var(--lumen-wine, #8B2845)" }}
                             >
-                                <span aria-hidden="true" className="text-lg">🎬</span>
                                 <span className="text-base font-medium">{t("meta.title")}</span>
-                                <span
-                                    className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                                    style={{ background: "var(--lumen-gold, #c4a55a)", color: "#fff" }}
-                                >Lumen</span>
                             </Link>
 
                             <button
@@ -85,9 +77,6 @@ export function AppTopNav() {
                         </div>
 
                         <div className="my-auto flex h-9 min-w-0 items-center justify-end gap-2 justify-self-end whitespace-nowrap">
-                            <Tooltip title={t(panelOpen ? "topNav.closeAgent" : "topNav.openAgent")}>
-                                <Button type="text" shape="circle" className="!h-8 !w-8 !min-w-8" icon={<Bot className="size-4" />} onClick={togglePanel} aria-label={t(panelOpen ? "topNav.closeAgent" : "topNav.openAgent")} />
-                            </Tooltip>
                             <UserStatusActions />
                         </div>
                     </div>

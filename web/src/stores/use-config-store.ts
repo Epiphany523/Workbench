@@ -53,14 +53,7 @@ export type AiConfig = {
     canvasImageCount: string;
 };
 
-export type WebdavSyncConfig = {
-    url: string;
-    username: string;
-    password: string;
-    directory: string;
-    lastSyncedAt: string;
-};
-export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webdav" | "local-storage";
+export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "local-storage";
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
@@ -111,22 +104,12 @@ export const defaultConfig: AiConfig = {
     canvasImageCount: "3",
 };
 
-export const defaultWebdavSyncConfig: WebdavSyncConfig = {
-    url: "",
-    username: "",
-    password: "",
-    directory: "infinite-canvas",
-    lastSyncedAt: "",
-};
-
 type ConfigStore = {
     config: AiConfig;
-    webdav: WebdavSyncConfig;
     isConfigOpen: boolean;
     configTab: ConfigTabKey;
     shouldPromptContinue: boolean;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
-    updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
     openConfigDialog: (shouldPromptContinue?: boolean, tab?: ConfigTabKey) => void;
     setConfigDialogOpen: (isOpen: boolean) => void;
@@ -190,7 +173,6 @@ export const useConfigStore = create<ConfigStore>()(
     persist(
         (set, get) => ({
             config: defaultConfig,
-            webdav: defaultWebdavSyncConfig,
             isConfigOpen: false,
             configTab: "channels",
             shouldPromptContinue: false,
@@ -201,13 +183,6 @@ export const useConfigStore = create<ConfigStore>()(
                         [key]: value,
                     },
                 })),
-            updateWebdavConfig: (key, value) =>
-                set((state) => ({
-                    webdav: {
-                        ...state.webdav,
-                        [key]: value,
-                    },
-                })),
             isAiConfigReady: (config, model) => isAiConfigReady(config, model),
             openConfigDialog: (shouldPromptContinue = false, configTab = "channels") => set({ isConfigOpen: true, shouldPromptContinue, configTab }),
             setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
@@ -215,18 +190,16 @@ export const useConfigStore = create<ConfigStore>()(
         }),
         {
             name: CONFIG_STORE_KEY,
-            partialize: (state) => ({ config: state.config, webdav: state.webdav }),
+            partialize: (state) => ({ config: state.config }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
-                const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
                 const config = { ...defaultConfig, ...persistedConfig };
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
                 const channels = normalizeChannels(config);
                 const models = modelOptionsFromChannels(channels);
                 return {
                     ...current,
-                    webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
                     config: {
                         ...config,
                         channelMode: "local",

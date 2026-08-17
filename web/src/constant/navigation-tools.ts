@@ -1,17 +1,9 @@
-import { FileText, ImagePlus, Images, Maximize2, Mic, Settings2, Video } from "lucide-react";
+import { FileText, Images, Maximize2, Settings2 } from "lucide-react";
 
 export const navigationTools = [
     {
         slug: "canvas",
         icon: Maximize2,
-    },
-    {
-        slug: "image",
-        icon: ImagePlus,
-    },
-    {
-        slug: "video",
-        icon: Video,
     },
     {
         slug: "prompts",
@@ -20,10 +12,6 @@ export const navigationTools = [
     {
         slug: "assets",
         icon: Images,
-    },
-    {
-        slug: "voice",  // v0.7.1 新增：語音工作室（借鑑 SHUO-Canvas）
-        icon: Mic,
     },
     {
         slug: "config",

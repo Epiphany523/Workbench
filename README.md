@@ -60,6 +60,7 @@
 - 插件系统：支持通过 URL 动态安装 / 启用 / 更新 / 卸载远程节点插件，并提供 TypeScript SDK 自行开发画布节点插件。
 - 自定义接口调用：可自定义生图 / 视频接口的调用方式，灵活适配各类中转站与自建服务。
 - 提示词库：浏览器前端直连多个 GitHub 开源项目，并缓存到 IndexedDB。
+- 
 
 完整功能说明见 [功能介绍](docs/content/docs/overview/features.mdx)。
 

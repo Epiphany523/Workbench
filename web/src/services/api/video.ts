@@ -3,9 +3,10 @@ import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
 import { dataUrlToFile } from "@/lib/image-utils";
+import { getCachedByteplusUpload, setCachedByteplusUpload } from "@/services/byteplus-file-cache";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
-import { boolConfig, buildSeedancePromptText, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
+import { boolConfig, buildSeedancePromptText, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, normalizeSeedanceReferenceMode, seedanceImageRoles, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { buildApiUrl, modelOptionName, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
@@ -178,12 +179,13 @@ async function createSeedanceTask(config: AiConfig, model: string, prompt: strin
     assertSeedanceAudioReferences(audioReferences);
     const content = await buildSeedanceContent(config, prompt, references, videoReferences, audioReferences);
     if (!content.length) throw new Error(apiText("videoPromptRequired"));
+    const plainModel = modelOptionName(model);
     const payload = {
-        model: modelOptionName(model),
+        model: plainModel,
         content,
         ratio: normalizeSeedanceRatio(config.size),
-        resolution: normalizeSeedanceResolution(config.vquality),
-        duration: normalizeSeedanceDuration(config.videoSeconds),
+        resolution: normalizeSeedanceResolution(config.vquality, plainModel),
+        duration: normalizeSeedanceDuration(config.videoSeconds, plainModel),
         generate_audio: boolConfig(config.videoGenerateAudio, true),
         watermark: boolConfig(config.videoWatermark, false),
     };
@@ -238,10 +240,12 @@ function seedanceApiUrl(config: AiConfig, taskId?: string) {
 
 async function buildSeedanceContent(config: AiConfig, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[]) {
     const content: Array<Record<string, unknown>> = [];
-    const text = buildSeedancePromptText(prompt, references, videoReferences, audioReferences);
+    const mode = normalizeSeedanceReferenceMode(config.videoReferenceMode);
+    const text = buildSeedancePromptText(prompt, references, videoReferences, audioReferences, mode);
     if (text) content.push({ type: "text", text });
-    for (const image of references.slice(0, SEEDANCE_REFERENCE_LIMITS.images)) {
-        content.push({ type: "image_url", image_url: { url: await resolveSeedanceImageUrl(config, image) }, role: "reference_image" });
+    const imageRoles = seedanceImageRoles(mode, references.length);
+    for (let index = 0; index < imageRoles.length; index += 1) {
+        content.push({ type: "image_url", image_url: { url: await resolveSeedanceImageUrl(config, references[index]) }, role: imageRoles[index] });
     }
     for (const video of videoReferences.slice(0, SEEDANCE_REFERENCE_LIMITS.videos)) {
         content.push({ type: "video_url", video_url: { url: await resolveSeedanceVideoUrl(video) }, role: "reference_video" });
@@ -255,9 +259,57 @@ async function buildSeedanceContent(config: AiConfig, prompt: string, references
 async function resolveSeedanceImageUrl(config: AiConfig, image: ReferenceImage) {
     const directUrl = image.url || image.dataUrl;
     if (isPublicMediaUrl(directUrl) || directUrl.startsWith("asset://")) return directUrl;
-    const dataUrl = await imageToDataUrl(image);
-    if (!dataUrl) throw new Error(apiText("referenceImageReadFailed"));
-    return dataUrl;
+    return uploadReferenceImageToByteplus(config, image);
+}
+
+/** In-flight-only: dedupes concurrent uploads of the same image within one session. Cross-session reuse is handled by the persistent byteplus-file-cache store (see resolveSeedanceImageUrl below). */
+const byteplusFileUploadCache = new Map<string, Promise<string>>();
+
+type ByteplusFileResponse = { id?: string; download_url?: string; status?: "processing" | "active" | "failed"; error?: { code?: string; message?: string } };
+type ApiFileEnvelope = ByteplusFileResponse | { code?: number | string; data?: ByteplusFileResponse | null; msg?: string; message?: string; error?: { message?: string } };
+
+async function uploadReferenceImageToByteplus(config: AiConfig, image: ReferenceImage): Promise<string> {
+    const cacheKey = image.storageKey || image.url || image.dataUrl;
+    if (cacheKey) {
+        const inFlight = byteplusFileUploadCache.get(cacheKey);
+        if (inFlight) return inFlight;
+        const persisted = await getCachedByteplusUpload(cacheKey);
+        if (persisted) return persisted;
+    }
+    const upload = (async () => {
+        const dataUrl = await imageToDataUrl(image);
+        if (!dataUrl) throw new Error(apiText("referenceImageReadFailed"));
+        const file = await dataUrlToFile({ ...image, dataUrl });
+        const body = new FormData();
+        body.append("file", file);
+        body.append("purpose", "user_data");
+        try {
+            const uploaded = unwrapEnvelope<ByteplusFileResponse>((await axios.post<ApiFileEnvelope>(aiApiUrl(config, "/files"), body, { headers: aiHeaders(config) })).data, apiText("byteplusFileUploadFailed"));
+            if (uploaded.status === "failed") throw new Error(readApiErrorMessage(uploaded.error?.message) || apiText("byteplusFileUploadFailed"));
+            if (!uploaded.download_url) throw new Error(apiText("byteplusFileUploadFailed"));
+            if (cacheKey) await setCachedByteplusUpload(cacheKey, uploaded.download_url);
+            return uploaded.download_url;
+        } catch (error) {
+            throw new Error(readAxiosError(error, apiText("byteplusFileUploadFailed")));
+        }
+    })();
+    if (cacheKey) byteplusFileUploadCache.set(cacheKey, upload);
+    try {
+        return await upload;
+    } finally {
+        if (cacheKey) byteplusFileUploadCache.delete(cacheKey);
+    }
+}
+
+export async function listSeedanceTasks(config: AiConfig, options?: { pageNum?: number; pageSize?: number; status?: string }): Promise<SeedanceTask[]> {
+    const params = { page_num: options?.pageNum ?? 1, page_size: options?.pageSize ?? 10, ...(options?.status ? { status: options.status } : {}) };
+    try {
+        const payload = (await axios.get<ApiEnvelope<{ items?: SeedanceTask[] } | SeedanceTask[]>>(seedanceApiUrl(config), { headers: aiHeaders(config), params })).data;
+        const data = unwrapEnvelope(payload, apiText("seedanceNoTask"));
+        return Array.isArray(data) ? data : data.items || [];
+    } catch (error) {
+        throw new Error(readAxiosError(error, apiText("seedanceTaskListFailed")));
+    }
 }
 
 async function resolveSeedanceVideoUrl(video: ReferenceVideo) {

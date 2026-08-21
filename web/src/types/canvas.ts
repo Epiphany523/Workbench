@@ -24,6 +24,7 @@ export type CanvasNodeTypeId = CanvasNodeType | (string & {});
 export type CanvasNodeStatus = "idle" | "success" | "loading" | "error";
 export type CanvasGenerationMode = "text" | "image" | "video" | "audio";
 export type CanvasImageGenerationType = "generation" | "edit";
+export type CanvasVideoReferenceMode = "reference" | "first_frame" | "first_last_frame";
 
 export type CanvasNodeImage = {
     id: string;
@@ -56,6 +57,7 @@ export type CanvasNodeMetadata = {
     vquality?: string;
     generateAudio?: string;
     watermark?: string;
+    videoReferenceMode?: CanvasVideoReferenceMode;
     audioVoice?: string;
     audioFormat?: string;
     audioSpeed?: string;

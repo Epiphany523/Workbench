@@ -43,6 +43,7 @@ export type AiConfig = {
     vquality: string;
     videoGenerateAudio: string;
     videoWatermark: string;
+    videoReferenceMode: string;
     systemPrompt: string;
     reasoningEffort: ReasoningEffort;
     models: string[];
@@ -59,33 +60,39 @@ export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
 const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
-const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
+/** BytePlus ModelArk (Singapore region) — confirmed from https://docs.byteplus.com/en/docs/ModelArk/1520757 */
+const BYTEPLUS_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
+/** Documented example model ID; the user's BytePlus account must have this model (or their own endpoint ID) activated. */
+const BYTEPLUS_VIDEO_MODEL_PLACEHOLDER = "seedance-1-5-pro-251215";
+/** Dreamina Seedance 2.0 (base tier) — supports up to 1080p/4k, duration [4,15] or -1. */
+const BYTEPLUS_VIDEO_MODEL_2_0 = "dreamina-seedance-2-0";
+/** Dreamina Seedance 2.0 fast — capped at 480p/720p (no 1080p/4k), duration [4,15] or -1. */
+const BYTEPLUS_VIDEO_MODEL_2_0_FAST = "dreamina-seedance-2-0-fast";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
-    baseUrl: OPENAI_BASE_URL,
+    baseUrl: BYTEPLUS_BASE_URL,
     apiKey: "",
-    apiFormat: "openai",
+    apiFormat: "ark",
     channels: [
         {
             id: "default",
             name: i18n.t("config.channels.defaultName"),
-            baseUrl: OPENAI_BASE_URL,
+            baseUrl: BYTEPLUS_BASE_URL,
             apiKey: "",
-            apiFormat: "openai",
+            apiFormat: "ark",
             models: [
-                { name: "gpt-image-2", capability: "image" },
-                { name: "grok-imagine-video", capability: "video" },
-                { name: "gpt-5.5", capability: "text" },
-                { name: "gpt-4o-mini-tts", capability: "audio" },
+                { name: BYTEPLUS_VIDEO_MODEL_PLACEHOLDER, capability: "video" },
+                { name: BYTEPLUS_VIDEO_MODEL_2_0, capability: "video" },
+                { name: BYTEPLUS_VIDEO_MODEL_2_0_FAST, capability: "video" },
             ],
         },
     ],
-    model: "default::gpt-image-2",
-    imageModel: "default::gpt-image-2",
-    videoModel: "default::grok-imagine-video",
-    textModel: "default::gpt-5.5",
-    audioModel: "default::gpt-4o-mini-tts",
+    model: "",
+    imageModel: "",
+    videoModel: `default::${BYTEPLUS_VIDEO_MODEL_PLACEHOLDER}`,
+    textModel: "",
+    audioModel: "",
     audioVoice: "alloy",
     audioFormat: "mp3",
     audioSpeed: "1",
@@ -94,9 +101,10 @@ export const defaultConfig: AiConfig = {
     vquality: "720",
     videoGenerateAudio: "true",
     videoWatermark: "false",
+    videoReferenceMode: "reference",
     systemPrompt: "",
     reasoningEffort: "auto",
-    models: ["default::gpt-image-2", "default::grok-imagine-video", "default::gpt-5.5", "default::gpt-4o-mini-tts"],
+    models: [`default::${BYTEPLUS_VIDEO_MODEL_PLACEHOLDER}`, `default::${BYTEPLUS_VIDEO_MODEL_2_0}`, `default::${BYTEPLUS_VIDEO_MODEL_2_0_FAST}`],
     quality: "auto",
     size: "1:1",
     background: "",
@@ -219,6 +227,7 @@ export const useConfigStore = create<ConfigStore>()(
                         vquality: config.vquality || "720",
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
+                        videoReferenceMode: config.videoReferenceMode || "reference",
                         canvasImageCount: config.canvasImageCount || "3",
                     },
                 };
@@ -345,7 +354,7 @@ function normalizeChannels(config: AiConfig) {
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
     if (apiFormat === "gemini") return GEMINI_BASE_URL;
-    if (apiFormat === "ark") return ARK_BASE_URL;
+    if (apiFormat === "ark") return BYTEPLUS_BASE_URL;
     return OPENAI_BASE_URL;
 }
 

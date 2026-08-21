@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
-import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedancePixelLabel, seedanceRatioOptions, seedanceResolutionOptions } from "@/lib/seedance-video";
+import { boolConfig, currentSeedanceModelName, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceReferenceMode, normalizeSeedanceResolution, resolveSeedanceModelSpec, SEEDANCE_REFERENCE_MODES, seedanceDurationOptionsFor, seedancePixelLabel, seedanceRatioOptions, seedanceResolutionOptionsFor, type SeedanceReferenceMode } from "@/lib/seedance-video";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { type AiConfig } from "@/stores/use-config-store";
 
@@ -24,6 +24,7 @@ const sizeOptions = [
 
 const secondOptions = [6, 10, 12, 16, 20];
 const seedanceRatioLabelKeys: Record<string, string> = { "16:9": "landscape", "9:16": "portrait", "1:1": "square", "4:3": "standardLandscape", "3:4": "standardPortrait", "21:9": "cinematic", adaptive: "adaptive" };
+const seedanceReferenceModeLabelKeys: Record<SeedanceReferenceMode, string> = { reference: "reference", first_frame: "firstFrame", first_last_frame: "firstLastFrame" };
 
 export const videoResolutionOptions = resolutionOptions.map((item) => ({ value: item.value, label: item.label }));
 export const videoSizeOptions = sizeOptions.map((item) => ({ value: item.value, get label() { return i18n.t(`settingsPanels.video.sizes.${item.labelKey}`); } }));
@@ -31,7 +32,7 @@ export const videoSecondOptions = secondOptions.map((value) => String(value));
 
 type VideoSettingsPanelProps = {
     config: AiConfig;
-    onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark", value: string) => void;
+    onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoReferenceMode", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
@@ -110,9 +111,12 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
 
 function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, className }: VideoSettingsPanelProps) {
     const { t } = useTranslation();
-    const resolution = normalizeSeedanceResolution(config.vquality);
+    const model = currentSeedanceModelName(config);
+    const spec = resolveSeedanceModelSpec(model);
+    const resolution = normalizeSeedanceResolution(config.vquality, model);
     const ratio = normalizeSeedanceRatio(config.size);
-    const duration = normalizeSeedanceDuration(config.videoSeconds);
+    const duration = normalizeSeedanceDuration(config.videoSeconds, model);
+    const referenceMode = normalizeSeedanceReferenceMode(config.videoReferenceMode);
     const generateAudio = boolConfig(config.videoGenerateAudio, true);
     const watermark = boolConfig(config.videoWatermark, false);
 
@@ -120,9 +124,19 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
                 {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.video.title")}</div> : null}
+                <SettingGroup title={t("settingsPanels.video.referenceMode")} color={theme.node.muted}>
+                    <div className="grid grid-cols-3 gap-2.5">
+                        {SEEDANCE_REFERENCE_MODES.map((value) => (
+                            <OptionPill key={value} selected={referenceMode === value} theme={theme} onClick={() => onConfigChange("videoReferenceMode", value)}>
+                                {t(`settingsPanels.video.referenceModes.${seedanceReferenceModeLabelKeys[value]}`)}
+                            </OptionPill>
+                        ))}
+                    </div>
+                    <div className="text-[11px] opacity-55">{t(`settingsPanels.video.referenceModeHints.${seedanceReferenceModeLabelKeys[referenceMode]}`)}</div>
+                </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.resolution")} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
-                        {seedanceResolutionOptions.map((item) => (
+                        {seedanceResolutionOptionsFor(model).map((item) => (
                             <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
                                 {item.label}
                             </OptionPill>
@@ -142,20 +156,20 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
                             >
                                 <SizePreview width={ratioPreview(item.value).width} height={ratioPreview(item.value).height} color={theme.node.text} />
                                 <span>{i18n.t(`settingsPanels.video.ratios.${seedanceRatioLabelKeys[item.value]}`)}</span>
-                                <span className="text-[10px] leading-none opacity-55">{item.value === "adaptive" ? "adaptive" : seedancePixelLabel(resolution, item.value)}</span>
+                                <span className="text-[10px] leading-none opacity-55">{item.value === "adaptive" ? "adaptive" : seedancePixelLabel(resolution, item.value, model)}</span>
                             </button>
                         ))}
                     </div>
                 </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.duration")} color={theme.node.muted}>
                     <div className="grid grid-cols-4 gap-2.5">
-                        {seedanceDurationOptions.map((value) => (
+                        {seedanceDurationOptionsFor(model).map((value) => (
                             <OptionPill key={value} selected={duration === value} theme={theme} onClick={() => onConfigChange("videoSeconds", String(value))}>
                                 {value === -1 ? t("settingsPanels.video.smart") : `${value}s`}
                             </OptionPill>
                         ))}
                     </div>
-                    <NumberInput value={String(duration)} min={-1} max={15} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
+                    <NumberInput value={String(duration)} min={spec.allowSmartDuration ? -1 : spec.durationMin} max={spec.durationMax} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
                 </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.output")} color={theme.node.muted}>
                     <div className="grid gap-2 rounded-xl border p-2.5" style={{ borderColor: theme.node.stroke }}>
